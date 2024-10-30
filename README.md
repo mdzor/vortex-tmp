@@ -64,3 +64,31 @@ $ forge --help
 $ anvil --help
 $ cast --help
 ```
+### Circuits
+
+# Compile the circuit
+circom ./circuits/privpay.circom --r1cs --wasm --sym -o ./circuits
+
+# Generate a witness for the circuit (using sample input)
+node ./circuits/privpay_js/generate_witness.js ./circuits/privpay_js/privpay.wasm ./circuits/input.json ./circuits/witness.wtns
+
+# Generate a trusted setup (Phase 1)
+snarkjs powersoftau new bn128 14 ./circuits/pot14_0000.ptau -v
+
+# Contribute to the ceremony
+snarkjs powersoftau contribute ./circuits/pot14_0000.ptau ./circuits/pot14_0001.ptau --name="First contribution" -v
+
+# Phase 2
+snarkjs powersoftau prepare phase2 ./circuits/pot14_0001.ptau ./circuits/pot14_final.ptau -v
+
+# Generate a zkey file
+snarkjs groth16 setup ./circuits/privpay.r1cs ./circuits/pot14_final.ptau ./circuits/privpay_0000.zkey
+
+# Contribute to phase 2 ceremony
+snarkjs zkey contribute ./circuits/privpay_0000.zkey ./circuits/privpay_0001.zkey --name="1st Contributor Name" -v
+
+# Export the verification key
+snarkjs zkey export verificationkey ./circuits/privpay_0001.zkey ./circuits/verification_key.json
+
+# Generate Solidity verifier
+snarkjs zkey export solidityverifier ./circuits/privpay_0001.zkey ./src/PrivPayVerifier.sol
